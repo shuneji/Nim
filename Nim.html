@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <META charset="UTF-8">
+            <script>
+            "use strict";
+            let ctx;
+            let count = 0;
+            function init(){
+                let canvas = document.getElementById("canvas");
+                ctx = canvas.getContext("2d");
+                ctx.fillStyle = "#00FF00";
+                ctx.fillRect(0,0,600,400);
+                //ctx.fillStyle = "red";
+                //ctx.fillText("Nim",250,100);
+                drawText("Red","Nim",250,100,50);
+                let start = document.getElementById("start");
+                ctx.drawImage(start,250,300,100,50);
+                canvas.onmousedown = menumousdown;
+            }
+
+            let stones = [];
+            let pile = 3;
+            let yourturn;//0で相手番、1で自分番
+            let stone_height = 30;
+            let stone_width;
+            let chosen_pile = NaN;
+            let chosen_stones = [];
+            let gameover = 0;
+            function go(){
+                gameover = 0;
+                chosen_pile = NaN;
+                stones = [];
+                for(let i=0;i<pile;i++){
+                    let x = Math.floor(Math.random()*9+1);
+                    stones.push(x);
+                }
+                stone_width = 600/(pile*2+1);
+                paint();
+                canvas.onmousedown = choicemousedown;
+                let first = document.getElementById("first");
+                let second = document.getElementById("second");
+                ctx.drawImage(first,140,360,60,20);
+                ctx.drawImage(second,400,360,60,20);
+                document.getElementById("message").textContent = "手番を選んでください。";
+            }
+            function choicemousedown(e){
+                if(140 < e.offsetX && 200 > e.offsetX &&
+                360 < e.offsetY && 380 > e.offsetY){
+                    yourturn = 1;
+                    canvas.onmousedown = playmousedown;
+                    paint();
+                    document.getElementById("message").textContent = "あなたの番です。取る箱を選んで下さい。";
+                }
+                else if(400 < e.offsetX && 460 > e.offsetX &&
+                360 < e.offsetY && 380 > e.offsetY){
+                    canvas.onmousedown = playmousedown;
+                    paint(); 
+                    opp_play();
+                    document.getElementById("message").textContent = "相手の番です。";
+                }
+            }
+            function opp_play(){
+                yourturn = 0;
+                //減らす石を決める
+                let i=0,j=0;
+                let x = 0;
+                for(let i=0;i<pile;i++){
+                    x = x^stones[i];
+                }
+                while(i<pile){
+                    let find = 0;
+                    while(j<=stones[i]){
+                        let y = (x^stones[i])^(stones[i]-j);
+                        if(y==0){
+                            find = 1;
+                            break;
+                        }
+                        j++;
+                    }
+                    if(find){break;}
+                    i++;
+                    j = 0;
+                }
+                while(j == 0 || stones[i] == 0){
+                    i = Math.floor(Math.random()*pile);
+                    j = Math.floor(Math.random()*(stones[i]-1)+1);
+                }
+                setTimeout(function(){
+                    for(let k=0;k<j;k++){
+                        paint_blue(i,stones[i]-k);
+                    }
+                    stones[i] -= j;
+                },500);
+                setTimeout(function(){
+                    paint();
+                    if(!gameover){
+                    yourturn = 1;
+                    document.getElementById("message").textContent = "あなたの番です。取る箱を選んで下さい。";
+                    }
+                },1000);
+            }
+            function drawRect(color, x,y,w,h){
+                ctx.fillStyle = color;
+                ctx.fillRect(x,y,w,h);
+            }
+            function drawText(color,text,x,y,size){
+                ctx.font = size+"px 'Times New Roman'";
+                ctx.fillStyle = color;
+                ctx.fillText(text,x,y);
+            }
+            function paint_blue(p,s){
+                drawRect("blue",wherestone_x(p,s),wherestone_y(p,s),stone_width,stone_height);
+            }
+            function paint_red(p,s){
+                drawRect("red",wherestone_x(p,s),wherestone_y(p,s),stone_width,stone_height);
+            }
+
+            function paint(){
+                gameover = 1;
+                drawRect("yellow",0,0,600,400);
+                drawRect("brown",0,350,600,50);
+                ctx.strokeStyle = "brown";
+                for(let i=0;i<pile;i++){
+                    if(stones[i] != 0){
+                        gameover = 0;
+                    }
+                    for(let j=1;j<=stones[i];j++){
+                        ctx.strokeRect(wherestone_x(i,j),wherestone_y(i,j),stone_width,stone_height);
+                        //drawRect("red",wherestone_x(i,j),wherestone_y(i,j),stone_width,stone_height);
+                        paint_red(i,j);
+                    }
+                }
+                if(gameover){
+                    if(yourturn){
+                        document.getElementById("message").textContent = "あなたの勝ちです！";
+                    }else{
+                        document.getElementById("message").textContent = "あなたの負けです…";
+                    }
+                    canvas.onmousedown = replaymousedown;
+                    let replay = document.getElementById("replay");
+                    ctx.drawImage(replay,250,150,100,50);
+                }
+            }
+
+            function menumousdown(e){
+                if(250 < e.offsetX && 350 > e.offsetX &&
+                300 < e.offsetY && 350 > e.offsetY){
+                    go();
+                }
+            }
+            function replaymousedown(e){
+                if(250 < e.offsetX && 350 > e.offsetX &&
+                150 < e.offsetY && 200 > e.offsetY){
+                    go();
+                }
+            }
+            //x座標を入れると何番目のpileかが返ってくる。
+            //pileが無い場合は-1が返る。
+            function whatpile(x){
+                let s = Math.floor(x/stone_width);
+                if(s%2 == 0){return -1;}
+                else{return Math.floor(s/2);}
+            }
+            //y座標を入れると何番目の石かが返ってくる。
+            //台をクリックすると-1が返る。
+            function whatstone(y){
+                if(y>350){return -1;}
+                else{return Math.floor((350 - y)/stone_height)+1;}
+            }
+            function wherestone_x(p,s){
+                return stone_width*(2*p+1);
+            }
+            function wherestone_y(p,s){
+                return 350-(s*stone_height);
+            }
+            function playmousedown(e){
+                if(!yourturn || gameover){return 0;}
+                if(e.offsetY < 350){
+                    let clicked_pile, clicked_stone;
+                    clicked_pile = whatpile(e.offsetX);
+                    clicked_stone = whatstone(e.offsetY);
+                    if(clicked_pile == -1){return 0;}
+                    if(stones[clicked_pile]<clicked_stone || clicked_stone <=0){
+                        return 0;
+                    }
+                    drawText("white","箱を取る",520,380,20);
+                    if(chosen_pile != clicked_pile){
+                        chosen_pile = clicked_pile;
+                        paint();
+                        drawText("white","箱を取る",520,380,20);
+                        paint_blue(chosen_pile,clicked_stone);
+                        chosen_stones.length = 0;
+                        chosen_stones.push(clicked_stone);
+                    }
+                    else{
+                        let flag = 1;//まだ選ばれていない石である
+                        for(let i=0;i<chosen_stones.length;i++){
+                            if(chosen_stones[i] == clicked_stone){
+                                flag = 0;
+                                chosen_stones.splice(i,1);
+                                if(chosen_stones.length == 0){
+                                    paint();
+                                }else{
+                                    paint_red(chosen_pile,clicked_stone);
+                                }
+                                break;
+                            }
+                        }
+                        if(flag){
+                            chosen_stones.push(clicked_stone);
+                            paint_blue(clicked_pile,clicked_stone);
+                        }
+                    }
+                }else if(e.offsetX>520 && e.offsetY>360 && chosen_stones.length > 0){
+                    stones[chosen_pile] -= chosen_stones.length;
+                    paint();
+                    chosen_stones.length = 0;
+                    if(!gameover){
+                    document.getElementById("message").textContent = "相手の番です";
+                    opp_play();
+                    }
+                }
+            }
+        </script>
+    </head>
+    <body onload="init()">
+        <canvas id="canvas" width="600" height="400"></canvas>
+        <img id = "start" src = "start.png" style = "display:none">
+        <img id = "replay" src = "replay.png" style = "display:none">
+        <img id = "first" src = "first.png" style = "display:none">
+        <img id = "second" src = "second.png" style = "display:none">
+        <p id="message"></p>
+        <p>
+            遊び方<br>
+            箱がいくつか積み上げられています。
+            あなたとコンピュータで交互にいくつかの箱を取り合っていくゲームです。<br>
+            最後の箱を取ったほうが勝ちです。
+            箱は一回の手番で、一つのタワーから何個でも取ることができます。<br>
+            ただし、複数のタワーから同時に取ることはできません。
+            また、パス（１個も取らない）はできません。
+            あなたは最初に先手か後手かを選ぶことができます。<br>
+            がんばってコンピュータを倒しましょう。<br>
+
+
+            
+        </p>
+    </body>
+</html>
